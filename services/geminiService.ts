@@ -4,8 +4,34 @@ import { Platform, WritingStyle, NewsletterDepth, PresentationType, Presentation
 // Lazy load the AI client. 
 // This prevents the app from crashing on startup if the API key is invalid or the environment isn't fully loaded.
 const getAi = () => {
-  // safe access to process.env.API_KEY via the polyfill or build injection
-  const apiKey = process.env.API_KEY || ''; 
+  let apiKey = '';
+
+  // 1. Try standard Vite Environment Variables (Best for Cloudflare Pages)
+  // We cast to 'any' to prevent TypeScript errors if types aren't generated
+  try {
+    if (import.meta && (import.meta as any).env) {
+      apiKey = (import.meta as any).env.VITE_API_KEY || (import.meta as any).env.API_KEY || '';
+    }
+  } catch (e) {
+    // Ignore error
+  }
+
+  // 2. Fallback to Window Polyfill (For local dev or specific injections)
+  if (!apiKey && typeof window !== 'undefined') {
+    apiKey = (window as any).process?.env?.API_KEY || '';
+  }
+
+  // 3. Fallback to process.env (Node.js environments)
+  if (!apiKey) {
+      try {
+        // @ts-ignore
+        if (typeof process !== 'undefined' && process.env) {
+            // @ts-ignore
+            apiKey = process.env.API_KEY || '';
+        }
+      } catch (e) {}
+  }
+
   return new GoogleGenAI({ apiKey });
 };
 
